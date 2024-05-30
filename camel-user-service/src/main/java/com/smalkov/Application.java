@@ -10,6 +10,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+
 @SpringBootApplication
 public class Application {
 
@@ -36,14 +38,28 @@ public class Application {
             .consumes("application/json")
             .type(User[].class)
             .to("direct:processUsers");
+        
+        onException(InvalidFormatException.class)
+            .log("Invalid format exception occurred: ${exception.message}")
+            .to("log:error")
+            .continued(true);
 
         from("direct:processUsers")
             .split(body())
-            .filter(simple("${body.role} == 'USER'"))
-            .marshal().json(JsonLibrary.Jackson)
-            .setHeader(KafkaConstants.KEY, constant("Camel"))
-            .log("Sending data to Kafka")
-            .to("kafka:user-topic?brokers=localhost:9092");
+            .doTry()
+                .unmarshal().json(JsonLibrary.Jackson, User.class)
+            .endDoTry()
+            .choice()
+                .when(header("InvalidFormat").isNull())
+                    .filter(simple("${body.role} == 'USER'"))
+                    .marshal().json(JsonLibrary.Jackson)
+                    .setHeader(KafkaConstants.KEY, constant("Camel"))
+                    .log("Sending data to Kafka")
+                    .to("kafka:user-topic?brokers=172.18.0.3:9092")
+                    .endChoice()
+                .otherwise()
+                    .log("Skipping invalid object")
+            .end();
     }
     }
 }
