@@ -55,7 +55,7 @@ public class Application {
                     .marshal().json(JsonLibrary.Jackson)
                     .setHeader(KafkaConstants.KEY, constant("Camel"))
                     .log("Sending data to Kafka")
-                    .to("kafka:user-topic?brokers=172.18.0.3:9092")
+                    .to("kafka:user-topic?brokers=kafka:9092")
                     .endChoice()
                 .otherwise()
                     .log("Skipping invalid object")
