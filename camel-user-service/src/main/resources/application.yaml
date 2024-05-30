@@ -1,0 +1,11 @@
+server:
+  port:8082
+
+camel:
+  component:
+    servlet:
+      mapping:
+        contextPath: /camel/*
+    kafka:
+      brokers:
+        - localhost:9092
